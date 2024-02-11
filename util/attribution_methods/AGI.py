@@ -114,6 +114,33 @@ def test(model, device, data, epsilon, topk, selected_ids, max_iter):
     # Return prediction, original image, and heatmap
     return example
 
+
+def test_binary(model, device, data, epsilon, max_iter):
+    # Send the data and label to the device
+    data = pre_processing(data, device)
+    data = data.to(device)
+
+    # Forward pass the data through the model
+    output = model(data)
+    init_pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
+
+    # In a binary classification problem, the other class is simply 1 - init_pred
+    other_class = 1 - init_pred
+
+    delta, perturbed_image = pgd_step(data, epsilon, model, init_pred, other_class, max_iter)
+    step_grad = delta
+
+    if (torch.is_tensor(step_grad)):
+        adv_ex = step_grad.squeeze().detach().cpu().numpy()
+    else:
+        return 0, 0, 0
+
+    img = data.squeeze().detach().cpu().numpy()
+    example = (init_pred.item(), img, adv_ex)
+
+    # Return prediction, original image, and heatmap
+    return example
+
 # set lowerbound and upperbound for figure
 percentile = 80
 upperbound = 99
